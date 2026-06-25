@@ -3,5 +3,9 @@
   "version": "1.0.0",
   "scripts": {
     "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "2.4.3",
+    "pg": "8.11.3"
   }
 }
