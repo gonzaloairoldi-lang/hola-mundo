@@ -41,7 +41,7 @@ async function setupDB() {
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
-        iduser SERIAL PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         username VARCHAR(100) UNIQUE NOT NULL,
         first_name VARCHAR(100) NOT NULL DEFAULT '',
         last_name VARCHAR(100) NOT NULL DEFAULT '',
@@ -116,7 +116,7 @@ async function handleLogin(req, res) {
   if (!username || !password) return json(res, 400, { message: 'Faltan datos.' });
   try {
     const result = await pool.query(
-      'SELECT iduser, username, first_name, last_name, role, password_hash FROM users WHERE username = $1 LIMIT 1',
+      'SELECT id as iduser, username, first_name, last_name, role, password_hash FROM users WHERE username = $1 LIMIT 1',
       [username]
     );
     if (!result.rows.length) return json(res, 401, { message: 'Credenciales inválidas.' });
@@ -125,7 +125,7 @@ async function handleLogin(req, res) {
     if (!valid) return json(res, 401, { message: 'Credenciales inválidas.' });
 
     const sid = generateSessionId();
-    sessions[sid] = { iduser: user.iduser, username: user.username, role: user.role };
+    sessions[sid] = { iduser: user.id, username: user.username, role: user.role };
 
     res.writeHead(200, {
       'Content-Type': 'application/json',
@@ -159,7 +159,7 @@ async function handleGetUsers(req, res) {
   if (!requireAdmin(req, res)) return;
   try {
     const result = await pool.query(
-      'SELECT iduser, username, first_name, last_name, email, role, created_at FROM users ORDER BY iduser'
+      'SELECT id as iduser, username, first_name, last_name, email, role, created_at FROM users ORDER BY id'
     );
     json(res, 200, result.rows);
   } catch (err) {
@@ -178,7 +178,7 @@ async function handleCreateUser(req, res) {
     const hash = await bcrypt.hash(password, 12);
     const result = await pool.query(
       `INSERT INTO users (username, first_name, last_name, email, password_hash, role)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING iduser, username, first_name, last_name, email, role`,
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id as iduser, username, first_name, last_name, email, role`,
       [username, first_name, last_name, email, hash, role]
     );
     json(res, 201, result.rows[0]);
@@ -200,11 +200,11 @@ async function handleUpdateUser(req, res, iduser) {
     if (password) {
       const hash = await bcrypt.hash(password, 12);
       query = `UPDATE users SET username=$1, first_name=$2, last_name=$3, email=$4, role=$5, password_hash=$6
-               WHERE iduser=$7 RETURNING iduser, username, first_name, last_name, email, role`;
+               WHERE id=$7 RETURNING id as iduser, username, first_name, last_name, email, role`;
       params = [username, first_name, last_name, email, role, hash, iduser];
     } else {
       query = `UPDATE users SET username=$1, first_name=$2, last_name=$3, email=$4, role=$5
-               WHERE iduser=$6 RETURNING iduser, username, first_name, last_name, email, role`;
+               WHERE id=$6 RETURNING id as iduser, username, first_name, last_name, email, role`;
       params = [username, first_name, last_name, email, role, iduser];
     }
     const result = await pool.query(query, params);
@@ -222,7 +222,7 @@ async function handleDeleteUser(req, res, iduser) {
   if (session.iduser === parseInt(iduser))
     return json(res, 400, { message: 'No podés eliminarte a vos mismo.' });
   try {
-    await pool.query('DELETE FROM users WHERE iduser = $1', [iduser]);
+    await pool.query('DELETE FROM users WHERE id = $1', [iduser]);
     json(res, 200, { message: 'Usuario eliminado.' });
   } catch (err) {
     json(res, 500, { message: 'Error interno.' });
