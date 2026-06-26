@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 
 const PORT = process.env.PORT || 3000;
 
-// PostgreSQL connection - sin SSL para postgres:16 interno de Railway
+// PostgreSQL connection - v2 ssl:false fix
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: false
