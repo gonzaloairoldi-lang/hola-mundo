@@ -6,13 +6,12 @@ const bcrypt = require('bcryptjs');
 
 const PORT = process.env.PORT || 3000;
 
-// PostgreSQL connection
+// PostgreSQL connection - sin SSL para postgres:16 interno de Railway
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: false
 });
 
-// Setup DB: create table and seed user on startup
 async function setupDB() {
   try {
     await pool.query(`
@@ -23,14 +22,13 @@ async function setupDB() {
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
-    // Insert Gonza if not exists
     const hash = await bcrypt.hash('1234', 12);
     await pool.query(`
       INSERT INTO users (username, password_hash)
       VALUES ('Gonza', $1)
       ON CONFLICT (username) DO NOTHING
     `, [hash]);
-    console.log('DB ready, user Gonza seeded.');
+    console.log('DB lista. Usuario Gonza creado.');
   } catch (err) {
     console.error('DB setup error:', err.message);
   }
@@ -74,7 +72,7 @@ async function handleLogin(req, res) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ message: 'OK', username: user.username }));
     } catch (err) {
-      console.error('Login error:', err);
+      console.error('Login error:', err.message);
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ message: 'Error interno.' }));
     }
@@ -89,7 +87,6 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Static files
   const routes = {
     '/': 'index.html',
     '/index.html': 'index.html',
@@ -99,7 +96,7 @@ const server = http.createServer((req, res) => {
   const file = routes[url];
   if (file) {
     const ext = path.extname(file);
-    const types = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css' };
+    const types = { '.html': 'text/html; charset=utf-8' };
     serveFile(res, path.join(__dirname, file), types[ext] || 'text/plain');
   } else {
     res.writeHead(404); res.end('Not found');
