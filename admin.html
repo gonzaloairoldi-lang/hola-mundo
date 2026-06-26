@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ABM Usuarios</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#0a0a0f; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+           color:#fff; min-height:100vh; }
+
+    /* Header */
+    .header { display:flex; align-items:center; justify-content:space-between;
+              padding:20px 32px; border-bottom:1px solid rgba(255,255,255,0.08);
+              background:rgba(255,255,255,0.02); }
+    .header h1 { font-size:18px; font-weight:600; letter-spacing:-0.3px; }
+    .header .user { font-size:13px; color:rgba(255,255,255,0.4); display:flex; align-items:center; gap:16px; }
+    .btn-logout { padding:7px 16px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);
+                  border-radius:8px; color:#fff; font-size:13px; cursor:pointer; transition:background 0.2s; }
+    .btn-logout:hover { background:rgba(255,255,255,0.1); }
+
+    /* Main */
+    .main { padding:32px; max-width:1100px; margin:0 auto; }
+    .toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
+    .toolbar h2 { font-size:22px; font-weight:600; letter-spacing:-0.5px; }
+    .btn-new { padding:10px 20px; background:linear-gradient(135deg,#7c3aed,#4f46e5);
+               border:none; border-radius:10px; color:#fff; font-size:14px; font-weight:500;
+               cursor:pointer; transition:opacity 0.2s; }
+    .btn-new:hover { opacity:0.85; }
+
+    /* Table */
+    .table-wrap { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07);
+                  border-radius:16px; overflow:hidden; }
+    table { width:100%; border-collapse:collapse; }
+    thead { background:rgba(255,255,255,0.04); }
+    th { padding:14px 16px; text-align:left; font-size:12px; font-weight:500;
+         color:rgba(255,255,255,0.5); letter-spacing:0.05em; text-transform:uppercase; }
+    td { padding:14px 16px; font-size:14px; border-top:1px solid rgba(255,255,255,0.05); }
+    tr:hover td { background:rgba(255,255,255,0.02); }
+    .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:500; }
+    .badge.admin { background:rgba(124,58,237,0.2); color:#a78bfa; }
+    .badge.user  { background:rgba(16,185,129,0.15); color:#34d399; }
+    .actions { display:flex; gap:8px; }
+    .btn-edit { padding:6px 14px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1);
+                border-radius:7px; color:#fff; font-size:12px; cursor:pointer; transition:background 0.2s; }
+    .btn-edit:hover { background:rgba(255,255,255,0.12); }
+    .btn-del { padding:6px 14px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2);
+               border-radius:7px; color:#f87171; font-size:12px; cursor:pointer; transition:background 0.2s; }
+    .btn-del:hover { background:rgba(239,68,68,0.18); }
+
+    /* Modal */
+    .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7);
+               align-items:center; justify-content:center; z-index:100; }
+    .overlay.open { display:flex; }
+    .modal { background:#131318; border:1px solid rgba(255,255,255,0.1); border-radius:20px;
+             padding:40px; width:100%; max-width:480px; }
+    .modal h3 { font-size:20px; font-weight:600; margin-bottom:28px; letter-spacing:-0.3px; }
+    .field { display:flex; flex-direction:column; gap:7px; margin-bottom:16px; }
+    label { font-size:13px; color:rgba(255,255,255,0.55); font-weight:500; }
+    input, select { padding:11px 14px; background:rgba(255,255,255,0.06);
+                    border:1px solid rgba(255,255,255,0.1); border-radius:9px;
+                    color:#fff; font-size:14px; outline:none; font-family:inherit; transition:border-color 0.2s; }
+    input:focus, select:focus { border-color:rgba(124,58,237,0.6); }
+    input::placeholder { color:rgba(255,255,255,0.2); }
+    select option { background:#1a1a2e; }
+    .modal-footer { display:flex; gap:10px; justify-content:flex-end; margin-top:24px; }
+    .btn-cancel { padding:10px 20px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1);
+                  border-radius:9px; color:#fff; font-size:14px; cursor:pointer; }
+    .btn-save { padding:10px 24px; background:linear-gradient(135deg,#7c3aed,#4f46e5);
+                border:none; border-radius:9px; color:#fff; font-size:14px; font-weight:500; cursor:pointer; }
+    .btn-save:hover { opacity:0.9; }
+    .modal-error { margin-top:12px; padding:10px 14px; background:rgba(239,68,68,0.1);
+                   border:1px solid rgba(239,68,68,0.2); border-radius:8px; color:#f87171; font-size:13px; display:none; }
+    .hint { font-size:12px; color:rgba(255,255,255,0.3); margin-top:4px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⚙ ABM Usuarios</h1>
+  <div class="user">
+    <span id="headerUser"></span>
+    <button class="btn-logout" onclick="logout()">Cerrar sesión</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="toolbar">
+    <h2>Usuarios</h2>
+    <button class="btn-new" onclick="openModal()">+ Nuevo usuario</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Usuario</th><th>Nombre</th><th>Apellido</th>
+          <th>Email</th><th>Rol</th><th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3 id="modalTitle">Nuevo usuario</h3>
+    <div class="field"><label>Usuario *</label><input id="fUsername" placeholder="username"/></div>
+    <div class="field"><label>Nombre *</label><input id="fFirstName" placeholder="Nombre"/></div>
+    <div class="field"><label>Apellido *</label><input id="fLastName" placeholder="Apellido"/></div>
+    <div class="field"><label>Email *</label><input id="fEmail" type="email" placeholder="email@ejemplo.com"/></div>
+    <div class="field">
+      <label>Contraseña *</label>
+      <input id="fPassword" type="password" placeholder="••••••••"/>
+      <span class="hint" id="passHint"></span>
+    </div>
+    <div class="field">
+      <label>Rol *</label>
+      <select id="fRole"><option value="user">User</option><option value="admin">Admin</option></select>
+    </div>
+    <div class="modal-error" id="modalError"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save" onclick="saveUser()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let editingId = null;
+
+  // Check auth
+  fetch('/api/me').then(r => r.json()).then(d => {
+    if (!d.username || d.role !== 'admin') { location.href='/login.html'; return; }
+    document.getElementById('headerUser').textContent = d.username + ' (admin)';
+    loadUsers();
+  });
+
+  async function loadUsers() {
+    const res = await fetch('/api/users');
+    if (res.status === 401 || res.status === 403) { location.href='/login.html'; return; }
+    const users = await res.json();
+    const tbody = document.getElementById('tbody');
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td>${u.iduser}</td>
+        <td>${u.username}</td>
+        <td>${u.first_name}</td>
+        <td>${u.last_name}</td>
+        <td>${u.email}</td>
+        <td><span class="badge ${u.role}">${u.role}</span></td>
+        <td><div class="actions">
+          <button class="btn-edit" onclick="openModal(${JSON.stringify(u).replace(/"/g,'&quot;')})">Editar</button>
+          <button class="btn-del" onclick="deleteUser(${u.iduser}, '${u.username}')">Eliminar</button>
+        </div></td>
+      </tr>
+    `).join('');
+  }
+
+  function openModal(user) {
+    editingId = user ? user.iduser : null;
+    document.getElementById('modalTitle').textContent = user ? 'Editar usuario' : 'Nuevo usuario';
+    document.getElementById('fUsername').value  = user ? user.username   : '';
+    document.getElementById('fFirstName').value = user ? user.first_name : '';
+    document.getElementById('fLastName').value  = user ? user.last_name  : '';
+    document.getElementById('fEmail').value     = user ? user.email      : '';
+    document.getElementById('fPassword').value  = '';
+    document.getElementById('fRole').value      = user ? user.role       : 'user';
+    document.getElementById('passHint').textContent = user ? 'Dejá vacío para no cambiar la contraseña.' : '';
+    document.getElementById('modalError').style.display = 'none';
+    document.getElementById('overlay').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('overlay').classList.remove('open');
+    editingId = null;
+  }
+
+  async function saveUser() {
+    const body = {
+      username:   document.getElementById('fUsername').value.trim(),
+      first_name: document.getElementById('fFirstName').value.trim(),
+      last_name:  document.getElementById('fLastName').value.trim(),
+      email:      document.getElementById('fEmail').value.trim(),
+      password:   document.getElementById('fPassword').value,
+      role:       document.getElementById('fRole').value,
+    };
+
+    // Validar obligatorios (password obligatorio solo en creación)
+    if (!body.username || !body.first_name || !body.last_name || !body.email || !body.role ||
+        (!editingId && !body.password)) {
+      showModalError('Todos los campos son obligatorios.');
+      return;
+    }
+
+    const url = editingId ? `/api/users/${editingId}` : '/api/users';
+    const method = editingId ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) { showModalError(data.message); return; }
+
+    closeModal();
+    loadUsers();
+  }
+
+  async function deleteUser(id, username) {
+    if (!confirm(`¿Eliminár al usuario "${username}"?`)) return;
+    const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) { alert(data.message); return; }
+    loadUsers();
+  }
+
+  function showModalError(msg) {
+    const el = document.getElementById('modalError');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  async function logout() {
+    await fetch('/api/logout', { method: 'POST' });
+    location.href = '/login.html';
+  }
+
+  // Cerrar modal con Escape
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>
